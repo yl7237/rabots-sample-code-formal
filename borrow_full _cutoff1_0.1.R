@@ -261,7 +261,7 @@ simFunc <- function(
 
 #----------------------------------------------
 # Example scenario using 
-#  (1) IA n = 25 and FA n = 60
+#  (1) IA n = 35 and FA n = 60
 #  (2) S2: (theta_L, theta_H, theta_C) = (0.55, 0.75, 0.55)
 #----------------------------------------------
 
@@ -288,6 +288,7 @@ colnames(dosepick_full) = colnames_do
 
 # save(poc_full, file = "poc_full.RData")
 # save(dosepick_full, file = "dosepick_full.RData")
+
 
 
 
