@@ -243,7 +243,7 @@ dosepick_non = data.frame(S2$dosepick)
 rownames(dosepick_non) = rownames_trueORR
 colnames(dosepick_non) = colnames_do
 
-save(poc_non, file = "poc_non.RData")
-save(dosepick_non, file = "dosepick_non.RData")
+# save(poc_non, file = "poc_non.RData")
+# save(dosepick_non, file = "dosepick_non.RData")
 
 
