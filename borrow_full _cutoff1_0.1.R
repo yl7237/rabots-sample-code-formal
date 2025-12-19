@@ -142,31 +142,31 @@ simFunc <- function(
       ind <- 0
       
       # IA1 decision logic
-      if (min(test.cutoff1, test.cutoff2) > cutoff1 & p.diff == 1) {
+      if (min(test.cutoff1, test.cutoff2) >= cutoff1 & p.diff == 1) {
         ind <- 1
         p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
         sel.higher1 <- sel.higher1 + 1
         res_Non_high <- c(res_Non_high, p.res[2])
         res_RMP_high <- c(res_RMP_high, p.res[1])
-      } else if (min(test.cutoff1, test.cutoff2) > cutoff1 & p.diff2 == 1) {
+      } else if (min(test.cutoff1, test.cutoff2) >= cutoff1 & p.diff2 == 1) {
         ind <- 2
         p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
         sel.lower1 <- sel.lower1 + 1
         res_Non_low <- c(res_Non_low, p.res[2])
         res_RMP_low <- c(res_RMP_low, p.res[1])
-      } else if (min(test.cutoff1, test.cutoff2) > cutoff1) {
+      } else if (min(test.cutoff1, test.cutoff2) >= cutoff1) {
         ind <- 2
         p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
         sel.lower1 <- sel.lower1 + 1
         res_Non_low <- c(res_Non_low, p.res[2])
         res_RMP_low <- c(res_RMP_low, p.res[1])
-      } else if (test.cutoff1 > cutoff1) {
+      } else if (test.cutoff1 >= cutoff1) {
         ind <- 2
         p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
         sel.lower1 <- sel.lower1 + 1
         res_Non_low <- c(res_Non_low, p.res[2])
         res_RMP_low <- c(res_RMP_low, p.res[1])
-      } else if (test.cutoff2 > cutoff1) {
+      } else if (test.cutoff2 >= cutoff1) {
         ind <- 1
         p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
         sel.higher1 <- sel.higher1 + 1
@@ -174,31 +174,31 @@ simFunc <- function(
         res_RMP_high <- c(res_RMP_high, p.res[1])
       } else {
         # IA2 decision logic
-        if (min(test.cutoff3, test.cutoff4) > cutoff1 & p.diff3 == 1) {
+        if (min(test.cutoff3, test.cutoff4) >= cutoff1 & p.diff3 == 1) {
           ind <- 1
           p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
           sel.higher2 <- sel.higher2 + 1
           res_Non_high <- c(res_Non_high, p.res[2])
           res_RMP_high <- c(res_RMP_high, p.res[1])
-        } else if (min(test.cutoff3, test.cutoff4) > cutoff1 & p.diff4 == 1) {
+        } else if (min(test.cutoff3, test.cutoff4) >= cutoff1 & p.diff4 == 1) {
           ind <- 2
           p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
           sel.lower2 <- sel.lower2 + 1
           res_Non_low <- c(res_Non_low, p.res[2])
           res_RMP_low <- c(res_RMP_low, p.res[1])
-        } else if (min(test.cutoff3, test.cutoff4) > cutoff1) {
+        } else if (min(test.cutoff3, test.cutoff4) >= cutoff1) {
           ind <- 2
           p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
           sel.lower2 <- sel.lower2 + 1
           res_Non_low <- c(res_Non_low, p.res[2])
           res_RMP_low <- c(res_RMP_low, p.res[1])
-        } else if (test.cutoff3 > cutoff1) {
+        } else if (test.cutoff3 >= cutoff1) {
           ind <- 2
           p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
           sel.lower2 <- sel.lower2 + 1
           res_Non_low <- c(res_Non_low, p.res[2])
           res_RMP_low <- c(res_RMP_low, p.res[1])
-        } else if (test.cutoff4 > cutoff1) {
+        } else if (test.cutoff4 >= cutoff1) {
           ind <- 1
           p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
           sel.higher2 <- sel.higher2 + 1
@@ -288,6 +288,7 @@ colnames(dosepick_full) = colnames_do
 
 # save(poc_full, file = "poc_full.RData")
 # save(dosepick_full, file = "dosepick_full.RData")
+
 
 
 
