@@ -34,31 +34,14 @@ p.f <- function(sample_b, sample_c, sample_t, delta) {
   # Set informative priors
   nf.prior <- mixbeta(nf.prior = c(1, 0.5, 0.5))
   post_c   <- postmix(nf.prior, n = ss_control, r = sum(sample_c))
+  
   prior.hist <- mixbeta(c(1, n_b * orr_low, n_b * (1 - orr_low)))
-  
   post_t <- postmix(prior.hist, n = ss_trt, r = sum(sample_t))
-  
-  # Robust Mixture Prior calculations
-  w <- 0.3
-  orr.trt <- sum(sample_t) / ss_trt
-  Lf1 <- dbeta(orr.trt, prior.hist[2, 1], prior.hist[3, 1])
-  Lfv <- dbeta(orr.trt, 0.5, 0.5)
-  w.new <- w * Lf1 / (w * Lf1 + (1 - w) * Lfv)
-  
-  RMP.prior <- SAM_prior(
-    if.prior = prior.hist,
-    nf.prior = nf.prior,
-    weight = w.new,
-    delta = delta
-  )
-  RMP.post <- postmix(RMP.prior, n = sum(ss_trt), r = sum(sample_t))
-  p.DRMP   <- decision(RMP.post, post_c)
-  drmp_w_cum <- ess(RMP.post, method = "moment")
   
   p.t <- decision(post_t, post_c)
   
   # Return selected outputs
-  c(p.DRMP, p.t, drmp_w_cum, w.new)
+  return(p.t)
 }
 
 #----------------------------------------------
@@ -85,8 +68,8 @@ simFunc <- function(
   
   # Results containers
   sel.lower1 <- sel.higher1 <- sel.lower2 <- sel.higher2 <- nogo <- 0
-  rmp_w_cum <- rmp_w <- test.freq <- res_Non_tmp <- res_RMP_tmp <- numeric(0)
-  res_Non_high <- res_Non_low <- res_RMP_high <- res_RMP_low <- numeric(0)
+  test.freq <- c()
+  res_Full_tmp <- res_Full_high <- res_Full_low <- c()
   
   # Start simulations
   for (i in 1:nk) {
@@ -94,152 +77,138 @@ simFunc <- function(
     tryCatch({
       set.seed(i + 2024)
       
-      # Accrual times for IA samples
-      acc_t0    <- runif(ss_control_IA, 0, ss_control_IA / acc_rate)
-      acc_t1.dl1 <- runif(ss_trt_IA, 0, ss_trt_IA / acc_rate)
-      acc_t1.dl2 <- runif(ss_trt_IA, 0, ss_trt_IA / acc_rate)
-      acc.max <- max(acc_t1.dl1, acc_t1.dl2, acc_t0)
+      # Accrual times for enrollment and scan
+      acc_t0      <- runif(ss_control_IA, 0, (ss_control_IA / acc_rate))
+      acc_t1.dl1  <- runif(ss_trt_IA, 0, (ss_trt_IA / acc_rate))
+      acc_t1.dl2  <- runif(ss_trt_IA, 0, (ss_trt_IA / acc_rate))
+      acc.max     <- max(acc_t1.dl1, acc_t1.dl2, acc_t0)
       
       # Observed patients for analysis after scan period
-      ss_control <- acc_t0       <= (acc.max - scan2_t)
-      ss_trt1   <- acc_t1.dl1    <= (acc.max - scan2_t)
-      ss_trt2   <- acc_t1.dl2    <= (acc.max - scan2_t)
+      ss_control <- (acc_t0       <= (acc.max - scan2_t))
+      ss_trt1    <- (acc_t1.dl1   <= (acc.max - scan2_t))
+      ss_trt2    <- (acc_t1.dl2   <= (acc.max - scan2_t))
       
       # Generate efficacy samples
-      sample_c_FA <- rbinom(ss_control_FA, 1, orr_control)
-      sample_c_IA <- sample_c_FA[1:ss_control_IA]
-      sample_c    <- sample_c_IA[ss_control]
+      sample_c_FA   <- rbinom(ss_control_FA, 1, orr_control)
+      sample_c_IA   <- sample_c_FA[1:ss_control_IA]
+      sample_c      <- sample_c_IA[ss_control]
       
-      sample_t1_FA <- rbinom(ss_trt_FA, 1, orr_trt1)
-      sample_t1_IA <- sample_t1_FA[1:ss_trt_IA]
-      sample_t1    <- sample_t1_IA[ss_trt1]
+      sample_t1_FA  <- rbinom(ss_trt_FA, 1, orr_trt1)
+      sample_t1_IA  <- sample_t1_FA[1:ss_trt_IA]
+      sample_t1     <- sample_t1_IA[ss_trt1]
       
-      sample_t2_FA <- rbinom(ss_trt_FA, 1, orr_trt2)
-      sample_t2_IA <- sample_t2_FA[1:ss_trt_IA]
-      sample_t2    <- sample_t2_IA[ss_trt2]
+      sample_t2_FA  <- rbinom(ss_trt_FA, 1, orr_trt2)
+      sample_t2_IA  <- sample_t2_FA[1:ss_trt_IA]
+      sample_t2     <- sample_t2_IA[ss_trt2]
       
       # Calculate differences & cutoffs
-      test.cutoff1 <- mean(sample_t1)    - mean(sample_c)    # prior to IA: calculate Delta_1 = ORR1 - ORRc
-      test.cutoff2 <- mean(sample_t2)    - mean(sample_c)    # prior to IA: calculate Delta_2 = ORR2 - ORRc
-      test.cutoff3 <- mean(sample_t1_IA) - mean(sample_c_IA) # Interim Analysis: ORR1 - ORRc
-      test.cutoff4 <- mean(sample_t2_IA) - mean(sample_c_IA) # Interim Analysis: ORR2 - ORRc
+      test.cutoff1 <- (mean(sample_t1)    - mean(sample_c))    # prior to IA: calculate Delta_1 = ORR1 - ORRc
+      test.cutoff2 <- (mean(sample_t2)    - mean(sample_c))   # prior to IA: calculate Delta_2 = ORR2 - ORRc
+      test.cutoff3 <- (mean(sample_t1_IA) - mean(sample_c_IA)) # Interim Analysis: ORR1 - ORRc
+      test.cutoff4 <- (mean(sample_t2_IA) - mean(sample_c_IA)) # Interim Analysis: ORR2 - ORRc
       
       # Define non-informative & informative prior values
       nf.prior <- mixbeta(nf.prior = c(1, 0.5, 0.5))
-      post_t1 <- postmix(nf.prior, n = sum(ss_trt1), r = sum(sample_t1))
-      post_t2 <- postmix(nf.prior, n = sum(ss_trt2), r = sum(sample_t2))
+      post_t1  <- postmix(nf.prior, n = sum(ss_trt1), r = sum(sample_t1))
+      post_t2  <- postmix(nf.prior, n = sum(ss_trt2), r = sum(sample_t2))
       
-      p.diff  <- decision3(post_t2, post_t1)
-      p.diff2 <- decision3(post_t1, post_t2)
-      post_t3 <- postmix(nf.prior, n = length(sample_t1_IA), r = sum(sample_t1_IA))
-      post_t4 <- postmix(nf.prior, n = length(sample_t2_IA), r = sum(sample_t2_IA))
-      p.diff3 <- decision3(post_t4, post_t3)
-      p.diff4 <- decision3(post_t3, post_t4)
+      p.diff   <- decision3(post_t2, post_t1)
+      p.diff2  <- decision3(post_t1, post_t2)
+      post_t3  <- postmix(nf.prior, n = length(sample_t1_IA), r = sum(sample_t1_IA))
+      post_t4  <- postmix(nf.prior, n = length(sample_t2_IA), r = sum(sample_t2_IA))
+      p.diff3  <- decision3(post_t4, post_t3)
+      p.diff4  <- decision3(post_t3, post_t4)
+      
       
       # Dose selection decision tree (IA1 and IA2)
       # See logic comment blocks
-      p.res <- c(0, 0, 0, 0)
-      ind <- 0
       
-      # IA1 decision logic
+      p.res <- NULL
+      ind <- NULL
+      
       if (min(test.cutoff1, test.cutoff2) >= cutoff1 & p.diff == 1) {
-        ind <- 1
-        p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
-        sel.higher1 <- sel.higher1 + 1
-        res_Non_high <- c(res_Non_high, p.res[2])
-        res_RMP_high <- c(res_RMP_high, p.res[1])
+        ind            <- 1
+        p.res          <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
+        sel.higher1    <- sel.higher1 + 1
+        res_Full_high  <- c(res_Full_high, p.res)
       } else if (min(test.cutoff1, test.cutoff2) >= cutoff1 & p.diff2 == 1) {
-        ind <- 2
-        p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-        sel.lower1 <- sel.lower1 + 1
-        res_Non_low <- c(res_Non_low, p.res[2])
-        res_RMP_low <- c(res_RMP_low, p.res[1])
+        ind            <- 2
+        p.res          <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+        sel.lower1     <- sel.lower1 + 1
+        res_Full_low   <- c(res_Full_low, p.res)
       } else if (min(test.cutoff1, test.cutoff2) >= cutoff1) {
-        ind <- 2
-        p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-        sel.lower1 <- sel.lower1 + 1
-        res_Non_low <- c(res_Non_low, p.res[2])
-        res_RMP_low <- c(res_RMP_low, p.res[1])
+        ind            <- 2
+        p.res          <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+        sel.lower1     <- sel.lower1 + 1
+        res_Full_low   <- c(res_Full_low, p.res)
       } else if (test.cutoff1 >= cutoff1) {
-        ind <- 2
-        p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-        sel.lower1 <- sel.lower1 + 1
-        res_Non_low <- c(res_Non_low, p.res[2])
-        res_RMP_low <- c(res_RMP_low, p.res[1])
+        ind            <- 2
+        p.res          <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+        sel.lower1     <- sel.lower1 + 1
+        res_Full_low   <- c(res_Full_low, p.res)
       } else if (test.cutoff2 >= cutoff1) {
-        ind <- 1
-        p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
-        sel.higher1 <- sel.higher1 + 1
-        res_Non_high <- c(res_Non_high, p.res[2])
-        res_RMP_high <- c(res_RMP_high, p.res[1])
+        ind            <- 1
+        p.res          <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
+        sel.higher1    <- sel.higher1 + 1
+        res_Full_high  <- c(res_Full_high, p.res)
       } else {
         # IA2 decision logic
         if (min(test.cutoff3, test.cutoff4) >= cutoff1 & p.diff3 == 1) {
-          ind <- 1
-          p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
-          sel.higher2 <- sel.higher2 + 1
-          res_Non_high <- c(res_Non_high, p.res[2])
-          res_RMP_high <- c(res_RMP_high, p.res[1])
+          ind           <- 1
+          p.res         <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
+          sel.higher2   <- sel.higher2 + 1
+          res_Full_high <- c(res_Full_high, p.res)
         } else if (min(test.cutoff3, test.cutoff4) >= cutoff1 & p.diff4 == 1) {
-          ind <- 2
-          p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-          sel.lower2 <- sel.lower2 + 1
-          res_Non_low <- c(res_Non_low, p.res[2])
-          res_RMP_low <- c(res_RMP_low, p.res[1])
+          ind          <- 2
+          p.res        <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+          sel.lower2   <- sel.lower2 + 1
+          res_Full_low <- c(res_Full_low, p.res)
         } else if (min(test.cutoff3, test.cutoff4) >= cutoff1) {
-          ind <- 2
-          p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-          sel.lower2 <- sel.lower2 + 1
-          res_Non_low <- c(res_Non_low, p.res[2])
-          res_RMP_low <- c(res_RMP_low, p.res[1])
+          ind          <- 2
+          p.res        <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+          sel.lower2   <- sel.lower2 + 1
+          res_Full_low <- c(res_Full_low, p.res)
         } else if (test.cutoff3 >= cutoff1) {
-          ind <- 2
-          p.res <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
-          sel.lower2 <- sel.lower2 + 1
-          res_Non_low <- c(res_Non_low, p.res[2])
-          res_RMP_low <- c(res_RMP_low, p.res[1])
+          ind          <- 2
+          p.res        <- p.f(sample_t2_IA, sample_c_FA, sample_t1_FA, delta=delta)
+          sel.lower2   <- sel.lower2 + 1
+          res_Full_low <- c(res_Full_low, p.res)
         } else if (test.cutoff4 >= cutoff1) {
-          ind <- 1
-          p.res <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
-          sel.higher2 <- sel.higher2 + 1
-          res_Non_high <- c(res_Non_high, p.res[2])
-          res_RMP_high <- c(res_RMP_high, p.res[1])
+          ind           <- 1
+          p.res         <- p.f(sample_t1_IA, sample_c_FA, sample_t2_FA, delta=delta)
+          sel.higher2   <- sel.higher2 + 1
+          res_Full_high <- c(res_Full_high, p.res)
         } else {
           ind <- 0
+          p.res <- 0
           nogo <- nogo + 1
         }
       }
       
-      # Frequentist test: t-test (unpaired, one-sided)
+      # Frequentist test (t-test, one-sided comparison)
       if (ind == 1) {
-        test.freq[i] <- t.test(sample_t2_FA, sample_c_FA,
-                               paired=FALSE, alternative="greater")$p.value
+        test.freq[i] <- t.test(sample_t2_FA, sample_c_FA, paired = FALSE, alternative = "greater")$p.value
       } else if (ind == 2) {
-        test.freq[i] <- t.test(sample_t1_FA, sample_c_FA,
-                               paired=FALSE, alternative="greater")$p.value
+        test.freq[i] <- t.test(sample_t1_FA, sample_c_FA, paired = FALSE, alternative = "greater")$p.value
       } else {
         test.freq[i] <- 1
       }
       
-      # Collect simulation outputs
-      rmp_w_cum <- c(rmp_w_cum, p.res[3])
-      rmp_w <- c(rmp_w, p.res[4])
-      res_RMP_tmp <- c(res_RMP_tmp, p.res[1])
-      res_Non_tmp <- c(res_Non_tmp, p.res[2])
+      # Store results
+      res_Full_tmp <- c(res_Full_tmp, p.res)
       
     }, error = function(e) {
       cat("Simulation", i, "encountered an error:", conditionMessage(e), "\n")
       NULL # Skip on error
     })
   }
+
   
-  # Update nk (if errors skipped)
-  nk <- length(res_Non_tmp)
   out <- c(
-    prop.table(table(res_Non_tmp))[2],
-    table(res_Non_low)[2] / nk,
-    table(res_Non_high)[2] / nk,
-    prop.table(table(res_Non_tmp))[1]
+    prop.table(table(res_Full_tmp))[2],
+    table(res_Full_low)[2] / nk,
+    table(res_Full_high)[2] / nk,
+    prop.table(table(res_Full_tmp))[1]
   ) * 100
   out <- t(data.frame(out))
   
@@ -266,13 +235,10 @@ simFunc <- function(
 #----------------------------------------------
 
 t1 <- Sys.time()
-S2 = simFunc(
-  ss_control_IA=35, ss_trt_IA=35, ss_control_FA=60, ss_trt_FA=60, 
-  orr_trt1=0.55, orr_trt2=0.75, orr_control=0.55
-  )
+S2 = simFunc(ss_control_IA=35, ss_trt_IA=35, ss_control_FA=60, ss_trt_FA=60, orr_trt1=0.55, orr_trt2=0.75, orr_control=0.55)
 t2 <- Sys.time()
 t2 - t1
-# Time difference of 2.914868 mins
+# Time difference of 39.444 secs
 
 rownames_trueORR = "(0.55, 0.75, 0.55)"
 colnames_poc = c("Go", "DL1 Go", "DL2 Go", "No Go")
@@ -288,6 +254,16 @@ colnames(dosepick_full) = colnames_do
 
 # save(poc_full, file = "poc_full.RData")
 # save(dosepick_full, file = "dosepick_full.RData")
+
+
+
+
+
+
+
+
+
+
 
 
 
