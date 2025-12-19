@@ -9,3 +9,5 @@ The scripts borrow_non_cutoff_0.1.R, borrow_full_cutoff_0.1.R, and borrow_sam_cu
 (2) borrow_full_cutoff_0.1.R demonstrates the simulation under full borrowing.
 
 (3) borrow_sam_cutoff_0.1.R demonstrates the simulation under the SAM prior.
+
+
