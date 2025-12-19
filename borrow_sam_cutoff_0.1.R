@@ -192,7 +192,7 @@ simFunc = function(
         res_SAM_high <- c(res_SAM_high, p.res[1])
       } else {
         ind   <- 0
-        p.res <- rep(0, 4)
+        p.res <- rep(0, 3)
         nogo  <- nogo + 1
       }
     }
