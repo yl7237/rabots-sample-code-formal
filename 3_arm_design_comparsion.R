@@ -203,7 +203,7 @@ df2 <- df2 %>%
 ## 3. Split into three datasets
 df_type1      <- df2 %>% filter(scenario == "Null")            %>% select(Methods, Go)
 df_power_high <- df2 %>% filter(scenario == "High only effective") %>% select(Methods, `DL2 Go`)
-df_power_both <- df2 %>% filter(scenario == "Both effective")  %>% select(Methods, Go)
+df_power_both <- df2 %>% filter(scenario == "Both effective")  %>% select(Methods, `DL1 Go`)
 
 ## Helper: common theme and scales so bars are close & clean
 ## 4. Individual plots
@@ -244,7 +244,7 @@ p_highonly <- ggplot(df_power_high, aes(x = Methods, y = `DL2 Go`, fill = Method
 
 
 # (c) Bayesian power when both doses are truly effective
-p_power <- ggplot(df_power_both, aes(x = Methods, y = Go, fill = Methods)) +
+p_power <- ggplot(df_power_both, aes(x = Methods, y =`DL1 Go`, fill = Methods)) +
   geom_bar(stat = "identity", width = 0.7) +
   labs(x = NULL, y = "Bayesian Power \n(both doses effective)") +
   theme_bw() +
@@ -271,3 +271,4 @@ combined_plot <- (p_type1 | p_highonly| p_power) +
   )
 # Example: save to PDF
 print(combined_plot) #10*5
+
